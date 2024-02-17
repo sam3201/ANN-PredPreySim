@@ -1,6 +1,10 @@
 # PredPreySim
 Predator Prey and Food Simulation
 
+## thems gots brains 
+ - Artificial Neural Networks
+ - From Scratch (math and random libraries)
+
 ### Dependencies
 - Python 3.12~
   
