@@ -4,7 +4,7 @@ Predator Prey and Food Simulation
 ### Dependencies
 - Python 3.12~
   
--cmu_graphics 
+- cmu_graphics 
   -pip3 install cmu-graphics
   
   - Desktop CMU Graphics (https://academy.cs.cmu.edu/desktop)
