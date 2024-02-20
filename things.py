@@ -457,10 +457,10 @@ class Predator:
                 return "None"
 
     def custom_loss(self, y, o):
-        epsilon = 1e-10  # Small constant to avoid math domain errors
-        o = max(epsilon, min(1 - epsilon, o))  # Clip 'o' to avoid values too close to 0 or 1
+        epsilon = 1e-10
+        o = max(-1 + epsilon, min(1 - epsilon, o))
 
-        return -y * math.log(o) - (1 - y) * math.log(1 - o)
+        return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
 
     def backprop(self):
         self.y = self.calcFitness()
@@ -893,10 +893,10 @@ class Prey:
                 return "None"
 
     def custom_loss(self, y, o):
-        epsilon = 1e-10  # Small constant to avoid math domain errors
-        o = max(epsilon, min(1 - epsilon, o))  # Clip 'o' to avoid values too close to 0 or 1
+        epsilon = 1e-10
+        o = max(-1 + epsilon, min(1 - epsilon, o))
 
-        return -y * math.log(o) - (1 - y) * math.log(1 - o)
+        return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
 
     def backprop(self):
         self.y = self.calcFitness()
