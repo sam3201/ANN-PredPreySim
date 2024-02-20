@@ -295,7 +295,7 @@ class Predator:
 
         inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
         self.decision = self.get_decision(inputs)
-        print(f"Pred:{self.id_num, self.health, self.decision}")
+        print(f"Pred: id:{self.id_num} health:{self.health}, action:{self.decision}")
 
         if self.decision == "up":
             if self.row > 0:
@@ -735,7 +735,7 @@ class Prey:
 
         inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
         self.decision = self.get_decision(inputs)
-        print(f"Prey:{self.id_num, self.health, self.decision}")
+        print(f"Prey: id:{self.id_num} health:{self.health}, action:{self.decision}")
 
         if self.decision == "up":
             if self.row > 0:
