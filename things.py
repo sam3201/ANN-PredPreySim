@@ -47,12 +47,12 @@ class Adam:
             param -= mhat / math.sqrt(vhat)
 
         return parameters
-    
+
 class Predator:
     def __init__(self, board, color, id_num):
         self.board = board
         self.color = color
-        
+
         available_tiles = []
         for row in range(len(self.board)):
             for col in range(len(self.board)):
@@ -67,35 +67,25 @@ class Predator:
         self.health = 100
 
         self.row, self.col = self.get_position()[0], self.get_position()[1]
-        
+
         self.num_threads = 4
         self.executor = ThreadPoolExecutor(max_workers=self.num_threads)
         self.lock = Lock()
 
         self.memory = [0]
-        
-        self.inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
 
-        self.bias1_mutation_rates = [ran.uniform(-1,1)]
-        self.bias2_mutation_rates = [ran.uniform(-1,1)]
-        self.bias3_mutation_rates = [ran.uniform(-1,1)]
-        self.bias4_mutation_rates = [ran.uniform(-1,1)]
+        self.inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
 
-        self.brain1_mutation_rates = [ran.uniform(-1,1)]
-        self.brain2_mutation_rates = [ran.uniform(-1,1)]
-        self.brain3_mutation_rates = [ran.uniform(-1,1)]
-        self.brain4_mutation_rates = [ran.uniform(-1,1)]
+        self.brain1 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain2 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain3 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain4 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
 
-        self.brain1 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain1_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain2 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain2_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain3 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain3_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain4 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain4_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
+        self.bias1 = [ran.uniform(-1, 1)  for _ in range(len(self.inputs))]
+        self.bias2 = [ran.uniform(-1, 1)  for _ in range(len(self.inputs))]
+        self.bias3 = [ran.uniform(-1, 1)  for _ in range(len(self.inputs))]
+        self.bias4 = [ran.uniform(-1, 1)  for _ in range(len(self.inputs))]
 
-        self.bias1 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias1_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias2 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias2_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias3 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias3_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias4 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias4_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        
         #clear inputs
         self.inputs = []
 
@@ -112,13 +102,13 @@ class Predator:
 
         self.tanh = lambda x: math.tanh(x)
         self.tanh_deriv = lambda x: 1 - math.tanh(x)**2
-        
+
         self.swish = lambda x: x * 1/(1+math.exp(-x))
         self.swish_deriv = lambda x: (1/(1+math.exp(-x))) + x * 1/(1+math.exp(-x)) * (1-1/(1+math.exp(-x)))
-        
+
         self.softplus = lambda x: math.log(math.exp(x) + 1)
         self.softplus_deriv = lambda x: self.sigmoid(x)
-        
+
         self.max_tanh = lambda x: max(0.0, self.tanh(x))
         self.max_tanh_deriv = lambda x: 1 if x > 0 else math.tanh(x)
 
@@ -139,7 +129,7 @@ class Predator:
         self.ran_act2_deriv = self.activations_derivs[self.ran_act2_idx]
         self.ran_act3_deriv = self.activations_derivs[self.ran_act3_idx]
         self.ran_act4_deriv = self.activations_derivs[self.ran_act4_idx]
-     
+
     def softmax(self, logits):
         exp_logits = [math.exp(logit) for logit in logits]
         sum_exp_logits = sum(exp_logits)
@@ -148,7 +138,7 @@ class Predator:
 
     def flatten(self, lst):
         return [item for sublst in lst for item in sublst]
-    
+
     def rec_flatten(self, arr):
         result = []
         for item in arr:
@@ -160,16 +150,16 @@ class Predator:
 
     def l2_norm(self, lst):
         res = 0
-    
+
         for item in lst:
             res += item ** 2
-    
+
         return math.sqrt(res)
-    
+
     def norm_data(self, data):
         norms = [self.l2_norm(row) for row in data]
         return [[x / norm for x in row] for row, norm in zip(data, norms)]
-        
+
     def reshape(self, flat_arr, original_arr):
         def reconstruct(arr_structure):
             if isinstance(arr_structure, list):
@@ -178,14 +168,14 @@ class Predator:
                 return flat_arr.pop(0)
 
         return reconstruct(original_arr)
-    
+
     def pad(self, inputs, weights, biases):
         inputs = self.rec_flatten(inputs)
         weights = self.rec_flatten(weights)
         biases = self.rec_flatten(biases)
-        
+
         print(f"inputs: {len(inputs)}, weights: {len(weights)}, biases: {len(biases)}")
-        
+
         max_length = max(len(inputs), len(weights), len(biases))
 
         input_padding = [0] * (max_length - len(inputs))
@@ -197,12 +187,29 @@ class Predator:
         biases += bias_padding
 
         return inputs, weights, biases
-    
+
+    def dotp(self, m1, m2):
+        if len(m1) > len(m2):
+            largerM = m1
+            shorterM = m2
+        else:
+            largerM = m2
+            shorterM = m1
+
+        res = 0
+        for lM in largerM:
+            for sM in shorterM:
+                res += lM * sM
+
+        return res
+
     def fcm_1d(self, inputs, weights, biases):
         res = 0
-        res += sum([(i*w)+b for i, w, b in zip(inputs, weights, biases)])
+        for i in inputs:
+            for idx, w in enumerate(weights):
+                res += (i*w)+biases[idx]
         return res
-    
+
     def fcm_2d(self, inputs, weights, biases):
         c = []
         for i in range(len(inputs)):
@@ -217,14 +224,14 @@ class Predator:
 
     def get_position(self):
         return [(rounded(self.body.centerX) // CELL_SIZE) % CELL_SIZE, (rounded(self.body.centerY) // CELL_SIZE) % CELL_SIZE]
-        
+
     def get_positions(self):
         self_pos = []
         agents_pos = []
         prey_pos = []
         food_pos = []
         empty_pos = []
-    
+
         for row in range(len(self.board)):
             for col in range(len(self.board)):
                 if self.board[row][col] == self.body:
@@ -242,9 +249,9 @@ class Predator:
                 elif self.board[row][col].fill == None:
                     empty_pos.append(row + 1)
                     empty_pos.append(col + 1)
-    
+
         return self_pos, agents_pos, prey_pos, food_pos, empty_pos
-    
+
     def one_hot_encode(self):
         encoded = []
         for row in range(len(self.board)):
@@ -259,48 +266,47 @@ class Predator:
                     encoded.append(4)
                 elif self.board[row][col].fill == None:
                     encoded.append(0)
-    
+
         return encoded
-        
+
     def calcFitness(self):
         health_fitness = self.health / 100
-    
+
         self_pos, agents_pos, prey_pos, food_pos, empty_pos = self.get_positions()
-    
+
         prey_distance = math.sqrt((app.width**2)+(app.height**2))
         for i in range(0, len(prey_pos), 2):
             distance = math.sqrt((self_pos[0] - prey_pos[i]) ** 2 + (self_pos[1] - prey_pos[i + 1]) ** 2)
             prey_distance = min(prey_distance, distance)
         prey_fitness = 1 - (prey_distance / (len(self.board) * math.sqrt(2)))
-    
+
         lifespan_fitness = len(self.memory) / len(self.memory) * 10
-    
+
         fitness = 1 / (1 + sum([health_fitness, prey_fitness, lifespan_fitness]))
-            
+
         return fitness
 
     def start_threads(self):
         future = self.executor.submit(self.move)
         future.result()
-                    
+
     def move(self):
         self.lock.acquire()
-        start_time = time.time()
 
-        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
+        inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
         self.decision = self.get_decision(inputs)
         print(f"Pred:{self.id_num, self.health, self.decision}")
-            
+
         if self.decision == "up":
             if self.row > 0:
                 new_tile = self.board[self.row - 1][self.col]
                 self.eat(new_tile)
-                if new_tile.fill == None:   
+                if new_tile.fill == None:
                     self.board[self.row][self.col].fill = None
                     self.body = new_tile
                     self.row -= 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "down":
             if self.row < len(self.board) - 1:
                 new_tile = self.board[self.row + 1][self.col]
@@ -310,7 +316,7 @@ class Predator:
                     self.body = new_tile
                     self.row += 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "left":
             if self.col > 0:
                 new_tile = self.board[self.row][self.col - 1]
@@ -320,7 +326,7 @@ class Predator:
                     self.body = new_tile
                     self.col -= 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "right":
             if self.col < len(self.board[0]) - 1:
                 new_tile = self.board[self.row][self.col + 1]
@@ -330,7 +336,7 @@ class Predator:
                     self.body = new_tile
                     self.col += 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "None":
             if (self.row and self.col):
                 new_tile = self.board[self.row][self.col]
@@ -341,17 +347,14 @@ class Predator:
                     self.row
                     self.col
                     new_tile.fill = self.color
-        
+
         self.health -= 1
         self.id.centerX, self.id.centerY = self.body.centerX, self.body.centerY
 
         self.backprop()
-        end_time = time.time()
-        
-        self.num_threads = end_time - start_time
 
         self.lock.release()
-        
+
     def eat(self, tile):
         if tile.fill == "forestGreen":
             for prey in preys:
@@ -369,47 +372,22 @@ class Predator:
                     app._can_run = False
 
     def get_decision(self, inputs):
-        prev_inputs = inputs
-
-        prev_mutatedBrain1 = [[scalar * b for weight in self.brain1 for scalar in weight] for b in self.brain1_mutation_rates]
-        prev_mutatedBias1 = [[scalar * b for weight in self.bias1 for scalar in weight] for b in self.bias1_mutation_rates]
-        
-        inputs, mutatedBrain1, mutatedBias1 = self.reshape(prev_inputs, prev_mutatedBrain1, prev_mutatedBias1)
-        mutatedBrain1, mutatedBias1 = self.reshape(mutatedBrain1, prev_mutatedBrain1), self.reshape(mutatedBias1, prev_mutatedBias1)
-        
-        output1 = self.ran_act1(self.relu(sum(self.fcm_2d(inputs, mutatedBrain1, mutatedBias1))))
-
-        prev_mutatedBrain2 = [[scalar * b for weight in self.brain2 for scalar in weight] for b in self.brain2_mutation_rates]
-        prev_mutatedBias2 = [[scalar * b for weight in self.bias2 for scalar in weight] for b in self.bias2_mutation_rates]
-        
-        inputs, mutatedBrain2, mutatedBias2 = self.reshape(prev_inputs, prev_mutatedBrain2, prev_mutatedBias2)
-        mutatedBrain2, mutatedBias2 = self.reshape(mutatedBrain2, prev_mutatedBrain2), self.reshape(mutatedBias2, prev_mutatedBias2)
-        output2 = self.ran_act2(self.relu(sum(self.fcm_1d(inputs, mutatedBrain2, mutatedBias2))))
-
-        prev_mutatedBrain3 = [[scalar * b for weight in self.brain3 for scalar in weight] for b in self.brain3_mutation_rates]
-        prev_mutatedBias3 = [[scalar * b for weight in self.bias3 for scalar in weight] for b in self.bias3_mutation_rates]
-
-        inputs, mutatedBrain3, mutatedBias3 = self.reshape(prev_inputs, prev_mutatedBrain3, prev_mutatedBias3)
-        mutatedBrain3, mutatedBias3 = self.reshape(mutatedBrain3, prev_mutatedBrain3), self.reshape(mutatedBias3, prev_mutatedBias3)
-        output3 = self.ran_act3(self.relu(sum(self.fcm_1d(inputs, mutatedBrain3, mutatedBias3))))
-
-        prev_mutatedBrain4 = [[scalar * b for weight in self.brain4 for scalar in weight] for b in self.brain4_mutation_rates]
-        prev_mutatedBias4 = [[scalar * b for weight in self.bias4 for scalar in weight] for b in self.bias4_mutation_rates]
-        
-        inputs, mutatedBrain4, mutatedBias4 = self.reshape(prev_inputs, prev_mutatedBrain4, prev_mutatedBias4)
-        mutatedBrain4, mutatedBias4 = self.reshape(mutatedBrain4, prev_mutatedBrain4), self.reshape(mutatedBias4, prev_mutatedBias4)
+        output1 = self.ran_act1(self.relu(self.fcm_1d(inputs, self.brain1, self.bias1)))
+        output2 = self.ran_act2(self.relu(self.fcm_1d(inputs, self.brain2, self.bias2)))
+        output3 = self.ran_act3(self.relu(self.fcm_1d(inputs, self.brain3, self.brain3)))
+        output4 = self.ran_act4(self.relu(self.fcm_1d(inputs, self.brain4, self.brain4)))
 
         #xor logic gate
         output1 = self.sigmoid(output1)
         output2 = self.sigmoid(output2)
         output3 = self.sigmoid(output3)
         output4 = self.sigmoid(output4)
-        
+
         self.o1 = 0
         self.o2 = 0
         self.o3 = 0
         self.o4 = 0
-        
+
         #if output is greater than 0.5 we use
         if output1 >= 0.5:
             self.o1 = 1
@@ -419,23 +397,30 @@ class Predator:
             self.o3 = 1
         if output4 >= 0.5:
             self.o4 = 1
-        
-        output1 = math.tanh(sum([self.o1 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate1 for brain in self.brain1]))
-        output2 = math.tanh(sum([self.o2 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate2 for brain in self.brain2]))
-        output3 = math.tanh(sum([self.o3 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate3 for brain in self.brain3]))
-        output4 = math.tanh(sum([self.o4 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate4 for brain in self.brain4]))
+
+        output1 = math.tanh(sum([self.o1 * self.fcm_1d(self.brain1, self.memory, self.bias1)]))
+        output2 = math.tanh(sum([self.o2 * self.fcm_1d(self.brain2, self.memory, self.bias2)]))
+        output3 = math.tanh(sum([self.o3 * self.fcm_1d(self.brain3, self.memory, self.bias3)]))
+        output4 = math.tanh(sum([self.o4 * self.fcm_1d(self.brain4, self.memory, self.bias4)]))
+
+        """
+        output1 = math.tanh(self.o1 * self.dotp(self.memory, self.brain1))
+        output2 = math.tanh(self.o2 * self.dotp(self.memory, self.brain2))
+        output3 = math.tanh(self.o3 * self.dotp(self.memory, self.brain3))
+        output4 = math.tanh(self.o4 * self.dotp(self.memory, self.brain4))
+        """
 
         #xor logic gate
         so1 = self.sigmoid(output1)
         so2 = self.sigmoid(output2)
         so3 = self.sigmoid(output3)
         so4 = self.sigmoid(output4)
-        
+
         self.so1 = 0
         self.so2 = 0
         self.so3 = 0
         self.so4 = 0
-        
+
         #if output is greater then 0.5 we use
         if so1 >= 0.5:
             self.so1 = 1
@@ -445,11 +430,11 @@ class Predator:
             self.so3 = 1
         if so4 >= 0.5:
             self.so4 = 1
-            
+
         outputs = [direction for output,direction in zip([self.so1,self.so2,self.so3,self.so4],[0.5,-1,-0.5,1]) if output == 1]
         if len(outputs) > 1:
             outputs = [ran.choice(outputs)]
-        
+
         #print(f"id:{self.id_num},o:{outputs}")
         match outputs:
             case [0.5]:
@@ -470,10 +455,13 @@ class Predator:
                     return "left"
             case [0]:
                 return "None"
-            
+
     def custom_loss(self, y, o):
+        epsilon = 1e-10  # Small constant to avoid math domain errors
+        o = max(epsilon, min(1 - epsilon, o))  # Clip 'o' to avoid values too close to 0 or 1
+
         return -y * math.log(o) - (1 - y) * math.log(1 - o)
-        
+
     def backprop(self):
         self.y = self.calcFitness()
 
@@ -481,33 +469,29 @@ class Predator:
         loss2 = self.custom_loss(self.y, self.o2)
         loss3 = self.custom_loss(self.y, self.o3)
         loss4 = self.custom_loss(self.y, self.o4)
-        
+
         od1 = self.relu_deriv(self.o1)
         od2 = self.relu_deriv(self.o2)
         od3 = self.relu_deriv(self.o3)
         od4 = self.relu_deriv(self.o4)
-        
-        for i in range(len(self.brain1)):
-            for j in range(len(self.brain1[i])):
-                self.brain1[i][j] -= loss1 * self.o1 * od1 * self.learning_rate1
-            
-        for i in range(len(self.brain2)):
-            for j in range(len(self.brain2[i])):
-                self.brain2[i][j] -= loss2 * self.o2 * od2 * self.learning_rate2
-        
-        for i in range(len(self.brain3)):
-            for j in range(len(self.brain3[i])):
-                self.brain3[i][j] -= loss3 * self.o3 * od3 * self.learning_rate3
-        
-        for i in range(len(self.brain4)):
-            for j in range(len(self.brain4[i])):
-                self.brain4[i][j] -= loss4 * self.o4 * od4 * self.learning_rate4
-            
+
+        for w in range(len(self.brain1)):
+            w -= loss1 * self.o1 * od1 * self.learning_rate1
+
+        for w in self.brain2:
+            w -= loss2 * self.o2 * od2 * self.learning_rate2
+
+        for w in self.brain3:
+            w -= loss3 * self.o3 * od3 * self.learning_rate3
+
+        for w in self.brain4:
+            w -= loss4 * self.o4 * od4 * self.learning_rate4
+
 class Prey:
     def __init__(self, board, color, id_num):
         self.board = board
         self.color = color
-        
+
         available_tiles = []
         for row in range(len(self.board)):
             for col in range(len(self.board)):
@@ -522,35 +506,25 @@ class Prey:
         self.health = 100
 
         self.row, self.col = self.get_position()[0], self.get_position()[1]
-        
+
         self.num_threads = 4
         self.executor = ThreadPoolExecutor(max_workers=self.num_threads)
         self.lock = Lock()
 
         self.memory = [0]
 
-        self.inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
+        self.inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
 
-        self.bias1_mutation_rates = [ran.uniform(-1,1)]
-        self.bias2_mutation_rates = [ran.uniform(-1,1)]
-        self.bias3_mutation_rates = [ran.uniform(-1,1)]
-        self.bias4_mutation_rates = [ran.uniform(-1,1)]
+        self.brain1 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain2 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain3 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.brain4 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
 
-        self.brain1_mutation_rates = [ran.uniform(-1,1)]
-        self.brain2_mutation_rates = [ran.uniform(-1,1)]
-        self.brain3_mutation_rates = [ran.uniform(-1,1)]
-        self.brain4_mutation_rates = [ran.uniform(-1,1)]
+        self.bias1 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.bias2 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.bias3 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
+        self.bias4 = [ran.uniform(-1, 1) for _ in range(len(self.inputs))]
 
-        self.brain1 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain1_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain2 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain2_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain3 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain3_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.brain4 = [[ran.uniform(-1, 1) * bmr for bmr in self.brain4_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-
-        self.bias1 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias1_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias2 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias2_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias3 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias3_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        self.bias4 = [[ran.uniform(-1, 1) * bmr for bmr in self.bias4_mutation_rates] for _ in range(len(self.flatten(self.inputs)))]
-        
         #clear inputs
         self.inputs = []
 
@@ -567,13 +541,13 @@ class Prey:
 
         self.tanh = lambda x: math.tanh(x)
         self.tanh_deriv = lambda x: 1 - math.tanh(x)**2
-        
+
         self.swish = lambda x: x * 1/(1+math.exp(-x))
         self.swish_deriv = lambda x: (1/(1+math.exp(-x))) + x * 1/(1+math.exp(-x)) * (1-1/(1+math.exp(-x)))
-        
+
         self.softplus = lambda x: math.log(math.exp(x) + 1)
         self.softplus_deriv = lambda x: self.sigmoid(x)
-        
+
         self.max_tanh = lambda x: max(0.0, self.tanh(x))
         self.max_tanh_deriv = lambda x: 1 if x > 0 else math.tanh(x)
 
@@ -594,7 +568,7 @@ class Prey:
         self.ran_act2_deriv = self.activations_derivs[self.ran_act2_idx]
         self.ran_act3_deriv = self.activations_derivs[self.ran_act3_idx]
         self.ran_act4_deriv = self.activations_derivs[self.ran_act4_idx]
-     
+
     def softmax(self, logits):
         exp_logits = [math.exp(logit) for logit in logits]
         sum_exp_logits = sum(exp_logits)
@@ -603,7 +577,7 @@ class Prey:
 
     def flatten(self, lst):
         return [item for sublst in lst for item in sublst]
-    
+
     def rec_flatten(self, arr):
         result = []
         for item in arr:
@@ -615,16 +589,16 @@ class Prey:
 
     def l2_norm(self, lst):
         res = 0
-    
+
         for item in lst:
             res += item ** 2
-    
+
         return math.sqrt(res)
-    
+
     def norm_data(self, data):
         norms = [self.l2_norm(row) for row in data]
         return [[x / norm for x in row] for row, norm in zip(data, norms)]
-        
+
     def reshape(self, flat_arr, original_arr):
         def reconstruct(arr_structure):
             if isinstance(arr_structure, list):
@@ -636,7 +610,7 @@ class Prey:
                     raise ValueError("Not enough elements in flat_arr to reshape the original structure.")
 
         return reconstruct(original_arr)
-    
+
     def pad(self, inputs, weights, biases):
         inputs = self.rec_flatten(inputs)
         weights = self.rec_flatten(weights)
@@ -653,12 +627,29 @@ class Prey:
         biases += bias_padding
 
         return inputs, weights, biases
-    
+
+    def dotp(self, m1, m2):
+        if len(m1) > len(m2):
+            largerM = m1
+            shorterM = m2
+        else:
+            largerM = m2
+            shorterM = m1
+
+        res = 0
+        for lM in largerM:
+            for sM in shorterM:
+                res += lM * sM
+
+        return res
+
     def fcm_1d(self, inputs, weights, biases):
         res = 0
-        res += sum([(i*w)+b for i, w, b in zip(inputs, weights, biases)])
+        for i in inputs:
+            for idx, w in enumerate(weights):
+                res += (i*w)+biases[idx]
         return res
-    
+
     def fcm_2d(self, inputs, weights, biases):
         c = []
         for i in range(len(inputs)):
@@ -673,14 +664,14 @@ class Prey:
 
     def get_position(self):
         return [(rounded(self.body.centerX) // CELL_SIZE) % CELL_SIZE, (rounded(self.body.centerY) // CELL_SIZE) % CELL_SIZE]
-        
+
     def get_positions(self):
         self_pos = []
         agents_pos = []
         pred_pos = []
         food_pos = []
         empty_pos = []
-    
+
         for row in range(len(self.board)):
             for col in range(len(self.board)):
                 if self.board[row][col] == self.body:
@@ -698,9 +689,9 @@ class Prey:
                 elif self.board[row][col].fill == None:
                     empty_pos.append(row + 1)
                     empty_pos.append(col + 1)
-    
+
         return self_pos, agents_pos, pred_pos, food_pos, empty_pos
-    
+
     def one_hot_encode(self):
         encoded = []
         for row in range(len(self.board)):
@@ -715,38 +706,37 @@ class Prey:
                     encoded.append(1)
                 elif self.board[row][col].fill == None:
                     encoded.append(0)
-    
+
         return encoded
-        
+
     def calcFitness(self):
         health_fitness = self.health / 100
-    
+
         self_pos, agents_pos, pred_pos, food_pos, empty_pos = self.get_positions()
-    
+
         pred_distance = math.sqrt((app.width**2)+(app.height**2))
         for i in range(0, len(pred_pos), 2):
             distance = math.sqrt((self_pos[0] - pred_pos[i]) ** 2 + (self_pos[1] - pred_pos[i + 1]) ** 2)
             pred_distance = min(pred_distance, distance)
         pred_fitness = 1 - (pred_distance / (len(self.board) * math.sqrt(2)))
-    
+
         lifespan_fitness = len(self.memory) / len(self.memory) * 10
-    
+
         fitness = 1 / (1 + sum([health_fitness, pred_fitness, lifespan_fitness]))
-            
+
         return fitness
 
     def start_threads(self):
         future = self.executor.submit(self.move)
         future.result()
-                    
+
     def move(self):
         self.lock.acquire()
-        start_time = time.time()
 
-        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
+        inputs = self.rec_flatten([i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()])
         self.decision = self.get_decision(inputs)
         print(f"Prey:{self.id_num, self.health, self.decision}")
-        
+
         if self.decision == "up":
             if self.row > 0:
                 new_tile = self.board[self.row - 1][self.col]
@@ -756,7 +746,7 @@ class Prey:
                     self.body = new_tile
                     self.row -= 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "down":
             if self.row < len(self.board) - 1:
                 new_tile = self.board[self.row + 1][self.col]
@@ -766,7 +756,7 @@ class Prey:
                     self.body = new_tile
                     self.row += 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "left":
             if self.col > 0:
                 new_tile = self.board[self.row][self.col - 1]
@@ -776,7 +766,7 @@ class Prey:
                     self.body = new_tile
                     self.col -= 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "right":
             if self.col < len(self.board[0]) - 1:
                 new_tile = self.board[self.row][self.col + 1]
@@ -786,7 +776,7 @@ class Prey:
                     self.body = new_tile
                     self.col += 1
                     new_tile.fill = self.color
-                    
+
         if self.decision == "None":
             if (self.row and self.col):
                 new_tile = self.board[self.row][self.col]
@@ -797,71 +787,43 @@ class Prey:
                     self.row
                     self.col
                     new_tile.fill = self.color
-        
+
         self.health -= 1
         self.id.centerX, self.id.centerY = self.body.centerX, self.body.centerY
 
         self.backprop()
-        end_time = time.time()
-
-        self.num_threads = end_time - start_time
 
         self.lock.release()
-        
+
     def eat(self, tile):
         if tile.fill == "blue":
             tile.fill = None
             tile.border = "black"
             self.health += 100
-            
+
             tile = ran.choice(ran.choice(board))
             while tile.fill != None:
-                tile = ran.choice(ran.choice(board))        
+                tile = ran.choice(ran.choice(board))
             else:
                 tile.fill = "blue"
-                
+
     def get_decision(self, inputs):
-        prev_inputs = inputs
+        output1 = self.ran_act1(self.relu(self.fcm_1d(inputs, self.brain1, self.bias1)))
+        output2 = self.ran_act2(self.relu(self.fcm_1d(inputs, self.brain2, self.bias2)))
+        output3 = self.ran_act3(self.relu(self.fcm_1d(inputs, self.brain3, self.bias3)))
+        output4 = self.ran_act4(self.relu(self.fcm_1d(inputs, self.brain4, self.bias4)))
 
-        prev_mutatedBrain1 = [[scalar * b for weight in self.brain1 for scalar in weight] for b in self.brain1_mutation_rates]
-        prev_mutatedBias1 = [[scalar * b for weight in self.bias1 for scalar in weight] for b in self.bias1_mutation_rates]
-        
-        inputs, mutatedBrain1, mutatedBias1 = self.reshape(prev_inputs, prev_mutatedBrain1, prev_mutatedBias1)
-        mutatedBrain1, mutatedBias1 = self.reshape(mutatedBrain1, prev_mutatedBrain1), self.reshape(mutatedBias1, prev_mutatedBias1)
-        output1 = self.ran_act1(self.relu(sum(self.fcm_1d(inputs, mutatedBrain1, mutatedBias1))))
-
-        prev_mutatedBrain2 = [[scalar * b for weight in self.brain2 for scalar in weight] for b in self.brain2_mutation_rates]
-        prev_mutatedBias2 = [[scalar * b for weight in self.bias2 for scalar in weight] for b in self.bias2_mutation_rates]
-        
-        inputs, mutatedBrain2, mutatedBias2 = self.reshape(prev_inputs, prev_mutatedBrain2, prev_mutatedBias2)
-        mutatedBrain2, mutatedBias2 = self.reshape(mutatedBrain2, prev_mutatedBrain2), self.reshape(mutatedBias2, prev_mutatedBias2)
-        output2 = self.ran_act2(self.relu(sum(self.fcm_1d(inputs, mutatedBrain2, mutatedBias2))))
-
-        prev_mutatedBrain3 = [[scalar * b for weight in self.brain3 for scalar in weight] for b in self.brain3_mutation_rates]
-        prev_mutatedBias3 = [[scalar * b for weight in self.bias3 for scalar in weight] for b in self.bias3_mutation_rates]
-
-        inputs, mutatedBrain3, mutatedBias3 = self.reshape(prev_inputs, prev_mutatedBrain3, prev_mutatedBias3)
-        mutatedBrain3, mutatedBias3 = self.reshape(mutatedBrain3, prev_mutatedBrain3), self.reshape(mutatedBias3, prev_mutatedBias3)
-        output3 = self.ran_act3(self.relu(sum(self.fcm_1d(inputs, mutatedBrain3, mutatedBias3))))
-
-        prev_mutatedBrain4 = [[scalar * b for weight in self.brain4 for scalar in weight] for b in self.brain4_mutation_rates]
-        prev_mutatedBias4 = [[scalar * b for weight in self.bias4 for scalar in weight] for b in self.bias4_mutation_rates]
-        
-        inputs, mutatedBrain4, mutatedBias4 = self.reshape(prev_inputs, prev_mutatedBrain4, prev_mutatedBias4)
-        mutatedBrain4, mutatedBias4 = self.reshape(mutatedBrain4, prev_mutatedBrain4), self.reshape(mutatedBias4, prev_mutatedBias4)
-        output4 = self.ran_act4(self.relu(sum(self.fcm_1d(inputs, mutatedBrain4, mutatedBias4))))
-        
         #xor logic gate
         output1 = self.sigmoid(output1)
         output2 = self.sigmoid(output2)
         output3 = self.sigmoid(output3)
         output4 = self.sigmoid(output4)
-        
+
         self.o1 = 0
         self.o2 = 0
         self.o3 = 0
         self.o4 = 0
-        
+
         #if output is greater than 0.5 we use
         if output1 >= 0.5:
             self.o1 = 1
@@ -871,23 +833,30 @@ class Prey:
             self.o3 = 1
         if output4 >= 0.5:
             self.o4 = 1
-        
-        output1 = math.tanh(sum([self.o1 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate1 for brain in self.brain1]))
-        output2 = math.tanh(sum([self.o2 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate2 for brain in self.brain2]))
-        output3 = math.tanh(sum([self.o3 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate3 for brain in self.brain3]))
-        output4 = math.tanh(sum([self.o4 * self.fcm_1d(brain, self.memory) * self.brain_mutation_rate4 for brain in self.brain4]))
+
+        output1 = math.tanh(sum([self.o1 * self.fcm_1d(self.brain1, self.memory, self.bias1)]))
+        output2 = math.tanh(sum([self.o2 * self.fcm_1d(self.brain2, self.memory, self.bias2)]))
+        output3 = math.tanh(sum([self.o3 * self.fcm_1d(self.brain3, self.memory, self.bias3)]))
+        output4 = math.tanh(sum([self.o4 * self.fcm_1d(self.brain4, self.memory, self.bias4)]))
+
+        """
+        output1 = math.tanh(self.o1 * self.dotp(self.memory, self.brain1))
+        output2 = math.tanh(self.o2 * self.dotp(self.memory, self.brain2))
+        output3 = math.tanh(self.o3 * self.dotp(self.memory, self.brain3))
+        output4 = math.tanh(self.o4 * self.dotp(self.memory, self.brain4))
+        """
 
         #xor logic gate
         so1 = self.sigmoid(output1)
         so2 = self.sigmoid(output2)
         so3 = self.sigmoid(output3)
         so4 = self.sigmoid(output4)
-        
+
         self.so1 = 0
         self.so2 = 0
         self.so3 = 0
         self.so4 = 0
-        
+
         #if output is greater then 0.5 we use
         if so1 >= 0.5:
             self.so1 = 1
@@ -897,11 +866,11 @@ class Prey:
             self.so3 = 1
         if so4 >= 0.5:
             self.so4 = 1
-            
+
         outputs = [direction for output,direction in zip([self.so1,self.so2,self.so3,self.so4],[0.5,-1,-0.5,1]) if output == 1]
         if len(outputs) > 1:
             outputs = [ran.choice(outputs)]
-                
+
         #print(f"id:{self.id_num},o:{outputs}")
         match outputs:
             case [0.5]:
@@ -922,10 +891,13 @@ class Prey:
                     return "left"
             case [0]:
                 return "None"
-           
+
     def custom_loss(self, y, o):
+        epsilon = 1e-10  # Small constant to avoid math domain errors
+        o = max(epsilon, min(1 - epsilon, o))  # Clip 'o' to avoid values too close to 0 or 1
+
         return -y * math.log(o) - (1 - y) * math.log(1 - o)
-    
+
     def backprop(self):
         self.y = self.calcFitness()
 
@@ -933,28 +905,24 @@ class Prey:
         loss2 = self.custom_loss(self.y, self.o2)
         loss3 = self.custom_loss(self.y, self.o3)
         loss4 = self.custom_loss(self.y, self.o4)
-        
+
         od1 = self.relu_deriv(self.o1)
         od2 = self.relu_deriv(self.o2)
         od3 = self.relu_deriv(self.o3)
         od4 = self.relu_deriv(self.o4)
-        
-        for i in range(len(self.brain1)):
-            for j in range(len(self.brain1[i])):
-                self.brain1[i][j] -= loss1 * self.o1 * od1 * self.learning_rate1
-            
-        for i in range(len(self.brain2)):
-            for j in range(len(self.brain2[i])):
-                self.brain2[i][j] -= loss2 * self.o2 * od2 * self.learning_rate2
-        
-        for i in range(len(self.brain3)):
-            for j in range(len(self.brain3[i])):
-                self.brain3[i][j] -= loss3 * self.o3 * od3 * self.learning_rate3
-        
-        for i in range(len(self.brain4)):
-            for j in range(len(self.brain4[i])):
-                self.brain4[i][j] -= loss4 * self.o4 * od4 * self.learning_rate4
-            
+
+        for w in self.brain1:
+            w -= loss1 * self.o1 * od1 * self.learning_rate1
+
+        for w in self.brain2:
+            w -= loss2 * self.o2 * od2 * self.learning_rate2
+
+        for w in self.brain3:
+            w -= loss3 * self.o3 * od3 * self.learning_rate3
+
+        for w in self.brain4:
+            w -= loss4 * self.o4 * od4 * self.learning_rate4
+
 BOARD_SIZE = app.width//25
 CELL_SIZE = app.height//16
 board = [[Rect(CELL_SIZE*row, CELL_SIZE*col, CELL_SIZE, CELL_SIZE, fill=None, border="black", borderWidth=0.25) for row in range(BOARD_SIZE)] for col in range(BOARD_SIZE)]
@@ -999,7 +967,7 @@ def mutatePreds():
             if tile.fill == "red" or "blue":
                 tile.fill = None
                 tile.border = "black"
-            
+
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             if ran.random() < 0.2:
@@ -1029,16 +997,6 @@ def mutatePreds():
         p.ran_act3_deriv = p.activations_derivs[p.ran_act3_idx]
         p.ran_act4_deriv = p.activations_derivs[p.ran_act4_idx]
 
-        p.brain1_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain1_mutation_rates]
-        p.brain2_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain2_mutation_rates]
-        p.brain3_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain3_mutation_rates]
-        p.brain4_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain4_mutation_rates]
-
-        p.bias1_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias1_mutation_rates]
-        p.bias2_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias2_mutation_rates]
-        p.bias3_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias3_mutation_rates]
-        p.bias4_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias4_mutation_rates]
-
         p.learning_rate1 += ran.uniform(-1, 1)
         p.learning_rate2 += ran.uniform(-1, 1)
         p.learning_rate3 += ran.uniform(-1, 1)
@@ -1047,7 +1005,7 @@ def mutatePreds():
         p.memory = dp.memory
 
         print(f"Pred_id:{p.id_num}")
-        
+
         predators.append(p)
         app.predGeneration += 1
         predGen.value = f"Gen:{app.predGeneration}"
@@ -1065,7 +1023,7 @@ def mutatePreys():
         for col in range(BOARD_SIZE):
             if ran.random() < 0.2:
                 board[row][col].fill = "blue"
-    
+
     app.deadPreyators.sort(key=lambda p: len(p.memory), reverse=True)
     for i,dp in enumerate(app.deadPreyators):
         p = Prey(board, "forestGreen", (dp.id_num+1))
@@ -1089,25 +1047,15 @@ def mutatePreys():
         p.ran_act3_deriv = p.activations_derivs[p.ran_act3_idx]
         p.ran_act4_deriv = p.activations_derivs[p.ran_act4_idx]
 
-        p.brain1_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain1_mutation_rates]
-        p.brain2_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain2_mutation_rates]
-        p.brain3_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain3_mutation_rates]
-        p.brain4_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.brain4_mutation_rates]
-
-        p.bias1_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias1_mutation_rates]
-        p.bias2_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias2_mutation_rates]
-        p.bias3_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias3_mutation_rates]
-        p.bias4_mutation_rates = [rate + ran.uniform(-1, 1) for rate in p.bias4_mutation_rates]
-
         p.learning_rate1 += ran.uniform(-1, 1)
         p.learning_rate2 += ran.uniform(-1, 1)
         p.learning_rate3 += ran.uniform(-1, 1)
         p.learning_rate4 += ran.uniform(-1, 1)
 
         p.memory = dp.memory
-        
+
         print(f"Prey_id:{p.id_num}")
-        
+
         preys.append(p)
         app.preysGeneration += 1
         preysGen.value = f"Gen:{app.preysGeneration}"
@@ -1117,27 +1065,27 @@ app.stepsPerSecond = 1
 def onStep():
     if app._can_run:
         #clean up, if needed
-                    
+
         for predator in predators[:]:
             predator.start_threads()
-            
+
             deadPreds.value = f"pred_dead:{len(app.deadPredators)}"
             alivePreds.value = f"pred_alive:{len(predators)}"
-            
+
             if predator.health <= 0:
                 app._can_run = False
                 print(f"Predator {predator.id_num} died and its thread will be stopped.")
-        
+
         for prey in preys[:]:
             prey.start_threads()
-            
+
             deadPreys.value = f"prey_dead:{len(app.deadPreyators)}"
             alivePreys.value = f"prey_alive:{len(preys)}"
-            
+
             if prey.health <= 0:
                 app._can_run = False
                 print(f"Prey {prey.id_num} died and its thread will be stopped.")
-                
+
     if not app._can_run:
         for predator in predators[:]:
             if predator.health <= 0:
@@ -1148,7 +1096,7 @@ def onStep():
                 # Stop the thread for this predator
                 predator.executor.shutdown()
                 print(f"Stopped thread for Predator {predator.id_num}")
-                
+
                 # Remove the predator from the list of active predators
                 predators.remove(predator)
                 app.group.remove(predator.body)
@@ -1165,7 +1113,7 @@ def onStep():
                 # Stop the thread for this prey
                 prey.executor.shutdown()
                 print(f"Stopped thread for Prey {prey.id_num}")
-                
+
                 # Remove the predator from the list of active preys
                 preys.remove(prey)
                 app.group.remove(prey.body)
@@ -1180,9 +1128,8 @@ def onStep():
 
         app._can_run = True
         print("Resuming app")
-        
-try:            
+
+try:
     cmu_graphics.run()
 except Exception as e:
     print(f"In the event of deploying an online Integrated Development Environment (IDE) at 'https://academy.cs.cmu.edu/>TIC123'\n\nIt is imperative to omit the line of code: cmu_graphics.run().\n\nAlternatively, if the deployment is intended for a personal device,\n\nit is crucial to ensure the presence of the 'cmu_graphics' library folder,\n\nobtainable either from the official website, CMU CS Academy Desktop, or the internal package library accessible through pip.")
-    
