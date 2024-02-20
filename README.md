@@ -1,4 +1,4 @@
-INCOMPLETE - doesn't work
+complete? - depends on your graphics driver/card. graphics might/might not update the moving of the preds/preys/food 
 
 # PredPreySim
 Predator Prey and Food Simulation
@@ -8,7 +8,7 @@ Predator Prey and Food Simulation
  - From Scratch (math and random libraries)
 
 ### Dependencies
-- Python 3.12~
+- Python 3.11
   
 - cmu_graphics 
   -pip3 install cmu-graphics
