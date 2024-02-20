@@ -1,4 +1,4 @@
-complete? - depends on your graphics driver/card. graphics might/might not update the moving of the preds/preys/food 
+working? - depends on your graphics driver/card. graphics might/might not update the moving of the preds/preys/food 
 
 # PredPreySim
 Predator Prey and Food Simulation
