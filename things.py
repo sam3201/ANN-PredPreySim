@@ -274,11 +274,12 @@ class Predator:
 
         self_pos, agents_pos, prey_pos, food_pos, empty_pos = self.get_positions()
 
-        prey_distance = math.sqrt((app.width**2)+(app.height**2))
+        prey_distance = math.sqrt((len(self.board) ** 2) + (len(self.board[0]) ** 2))
+
         for i in range(0, len(prey_pos), 2):
             distance = math.sqrt((self_pos[0] - prey_pos[i]) ** 2 + (self_pos[1] - prey_pos[i + 1]) ** 2)
             prey_distance = min(prey_distance, distance)
-        prey_fitness = 1 - (prey_distance / (len(self.flatten(self.board)) * math.sqrt(2)))
+        prey_fitness = 1 - (prey_distance / (len(self.board) * math.sqrt(2)))
 
         lifespan_fitness = len(self.memory) / len(self.memory) * 10
 
@@ -715,7 +716,8 @@ class Prey:
 
         self_pos, agents_pos, pred_pos, food_pos, empty_pos = self.get_positions()
 
-        pred_distance = math.sqrt((app.width**2)+(app.height**2))
+        pred_distance = math.sqrt((len(self.board) ** 2) + (len(self.board[0]) ** 2))
+
         for i in range(0, len(pred_pos), 2):
             distance = math.sqrt((self_pos[0] - pred_pos[i]) ** 2 + (self_pos[1] - pred_pos[i + 1]) ** 2)
             pred_distance = min(pred_distance, distance)
