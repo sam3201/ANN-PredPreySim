@@ -397,18 +397,19 @@ class Predator:
             self.o3 = 1
         if output4 >= 0.5:
             self.o4 = 1
-
+            
+        """
         output1 = math.tanh(sum([self.o1 * self.fcm_1d(self.brain1, self.memory, self.bias1)]))
         output2 = math.tanh(sum([self.o2 * self.fcm_1d(self.brain2, self.memory, self.bias2)]))
         output3 = math.tanh(sum([self.o3 * self.fcm_1d(self.brain3, self.memory, self.bias3)]))
         output4 = math.tanh(sum([self.o4 * self.fcm_1d(self.brain4, self.memory, self.bias4)]))
-
         """
+        
         output1 = math.tanh(self.o1 * self.dotp(self.memory, self.brain1))
         output2 = math.tanh(self.o2 * self.dotp(self.memory, self.brain2))
         output3 = math.tanh(self.o3 * self.dotp(self.memory, self.brain3))
         output4 = math.tanh(self.o4 * self.dotp(self.memory, self.brain4))
-        """
+        
 
         #xor logic gate
         so1 = self.sigmoid(output1)
@@ -834,17 +835,18 @@ class Prey:
         if output4 >= 0.5:
             self.o4 = 1
 
+        """
         output1 = math.tanh(sum([self.o1 * self.fcm_1d(self.brain1, self.memory, self.bias1)]))
         output2 = math.tanh(sum([self.o2 * self.fcm_1d(self.brain2, self.memory, self.bias2)]))
         output3 = math.tanh(sum([self.o3 * self.fcm_1d(self.brain3, self.memory, self.bias3)]))
         output4 = math.tanh(sum([self.o4 * self.fcm_1d(self.brain4, self.memory, self.bias4)]))
-
         """
+        
         output1 = math.tanh(self.o1 * self.dotp(self.memory, self.brain1))
         output2 = math.tanh(self.o2 * self.dotp(self.memory, self.brain2))
         output3 = math.tanh(self.o3 * self.dotp(self.memory, self.brain3))
         output4 = math.tanh(self.o4 * self.dotp(self.memory, self.brain4))
-        """
+
 
         #xor logic gate
         so1 = self.sigmoid(output1)
