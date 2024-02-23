@@ -783,7 +783,7 @@ def mutatePreys():
 
     deadPreyators.sort(key=lambda p: len(p.memory), reverse=True)
     for i,dp in enumerate(deadPreyators):
-        p = Prey(board, "red", (i+1))
+        p = Prey(board, "forestGreen", (i+1))
         p.brain1 = dp.brain1
         p.brain2 = dp.brain2
         p.brain3 = dp.brain3
