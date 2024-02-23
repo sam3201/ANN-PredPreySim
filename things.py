@@ -171,7 +171,7 @@ class Predator:
     def move(self):
         self.lock.acquire()
 
-        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
+        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory + i for i in self.get_positions()]
         self.decision = self.get_decision(inputs)
         print(self.id_num, self.health, self.decision)
 
@@ -340,7 +340,10 @@ class Predator:
         epsilon = 1e-10
         o = max(-1 + epsilon, min(1 - epsilon, o))
 
-        return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
+        try:
+            return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
+        except ValueError:
+            return math.inf
 
     def backprop(self):
         self.y = self.calcFitness()
@@ -526,7 +529,7 @@ class Prey:
     def move(self):
         self.lock.acquire()
 
-        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory for i in self.get_positions()]
+        inputs = [i + self.one_hot_encode() + [self.get_position()[0] + self.get_position()[1]] + [self.health] + self.memory + i for i in self.get_positions()]
         self.decision = self.get_decision(inputs)
         print(self.id_num, self.health, self.decision)
 
@@ -685,7 +688,10 @@ class Prey:
         epsilon = 1e-10
         o = max(-1 + epsilon, min(1 - epsilon, o))
 
-        return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
+        try:
+            return -y * math.log((o + 1) / 2) - (1 - y) * math.log((1 - o) / 2)
+        except ValueError:
+            return math.inf
 
     def backprop(self):
         self.y = self.calcFitness()
@@ -798,12 +804,19 @@ def mutatePreys():
         preys.append(p)
         preysGen.value = f"Gen:{preysGeneration + 1}"
 
-app.stepsPerSecond = 1
+app.stepsPerSecond = 20
+
+for predator in predators:
+    predator.move()
+
+for prey in preys:
+    prey.move()
+
 def onStep():
     if app._can_run:
         #clean up, if needed
 
-        for predator in predators[:]:
+        for predator in predators:
             predator.start_threads()
 
             deadPreds.value = f"pred_dead:{len(deadPredators)}"
@@ -813,7 +826,7 @@ def onStep():
                 app._can_run = False
                 print(f"Predator {predator.id_num} died and its thread will be stopped.")
 
-        for prey in preys[:]:
+        for prey in preys:
             prey.start_threads()
 
             deadPreys.value = f"prey_dead:{len(deadPreyators)}"
@@ -824,39 +837,37 @@ def onStep():
                 print(f"Prey {prey.id_num} died and its thread will be stopped.")
 
     if not app._can_run:
-        for predator in predators[:]:
-            if predator.health <= 0:
-                # Add the predator to deadPredators
-                deadPredators.append(predator)
-                print(f"Added Predator {predator.id_num} to deadPredators.")
+        for predator in predators:
+            # Add the predator to deadPredators
+            deadPredators.append(predator)
+            print(f"Added Predator {predator.id_num} to deadPredators.")
 
-                # Stop the thread for this predator
-                predator.thread_queue.queue.clear()  # Clear the queue to stop the thread
-                print(f"Stopped thread for Predator {predator.id_num}")
+            # Stop the thread for this predator
+            predator.thread_queue.queue.clear()  # Clear the queue to stop the thread
+            print(f"Stopped thread for Predator {predator.id_num}")
 
-                # Remove the predator from the list of active predators
-                predators.remove(predator)
-                app.group.remove(predator.body)
-                app.group.remove(predator.id)
-                predator.board[predator.get_position()[0]][predator.get_position()[1]].fill = None
-                print(f"Predator {predator.id_num} has been removed and will be mutated.")
+            # Remove the predator from the list of active predators
+            predators.remove(predator)
+            app.group.remove(predator.body)
+            app.group.remove(predator.id)
+            board[predator.get_position()[0]][predator.get_position()[1]].fill = None
+            print(f"Predator {predator.id_num} has been removed and will be mutated.")
 
-        for prey in preys[:]:
-            if prey.health <= 0:
-                # Add the prey to deadPreys
-                deadPreyators.append(prey)
-                print(f"Added Predator {prey.id_num} to deadPreys.")
+        for prey in preys:
+            # Add the prey to deadPreys
+            deadPreyators.append(prey)
+            print(f"Added Predator {prey.id_num} to deadPreys.")
 
-                # Stop the thread for this prey
-                prey.thread_queue.queue.clear()  # Clear the queue to stop the thread
-                print(f"Stopped thread for Prey {prey.id_num}")
+            # Stop the thread for this prey
+            prey.thread_queue.queue.clear()  # Clear the queue to stop the thread
+            print(f"Stopped thread for Prey {prey.id_num}")
 
-                # Remove the predator from the list of active preys
-                preys.remove(prey)
-                app.group.remove(prey.body)
-                app.group.remove(prey.id)
-                prey.board[prey.get_position()[0]][prey.get_position()[1]].fill = None
-                print(f"Prey {prey.id_num} has been removed and will be mutated.")
+            # Remove the predator from the list of active preys
+            preys.remove(prey)
+            app.group.remove(prey.body)
+            app.group.remove(prey.id)
+            board[prey.get_position()[0]][prey.get_position()[1]].fill = None
+            print(f"Prey {prey.id_num} has been removed and will be mutated.")
 
         if len(predators) == 0:
             mutatePreds()
