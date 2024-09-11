@@ -8,11 +8,11 @@ Predator Prey and Food Simulation
  - From Scratch (math and random libraries)
 
 ### Dependencies
-- Python 3.11
+- >= Python 3.11 
   
-- cmu_graphics 
-  -pip3 install cmu-graphics
-  
+- cmu_graphics
+   -pip3 install cmu-graphics
+or
   - Desktop CMU Graphics (https://academy.cs.cmu.edu/desktop)
     - extract **cmu_graphics_installer.zip** file Inside of PredPreySim/ directory
      - move **cmu_graphics** folder from cmu_graphics_installer to PredPreySim/ directory
