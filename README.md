@@ -12,7 +12,7 @@ Predator Prey and Food Simulation
   
 - cmu_graphics
    -pip3 install cmu-graphics
-**or**
+**\n or**
  - Desktop CMU Graphics (https://academy.cs.cmu.edu/desktop)
     - extract **cmu_graphics_installer.zip** file Inside of PredPreySim/ directory
      - move **cmu_graphics** folder from cmu_graphics_installer to PredPreySim/ directory
