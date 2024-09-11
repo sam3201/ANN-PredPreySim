@@ -8,7 +8,7 @@ Predator Prey and Food Simulation
  - From Scratch (math and random libraries)
 
 ### Dependencies
-- => Python 3.11 
+- Greater than or equal to Python 3.11 
   
 - cmu_graphics
    -pip3 install cmu-graphics
